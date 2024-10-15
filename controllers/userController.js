@@ -17,7 +17,7 @@ const validateUsername = (username) => {
 
 // Helper function for password validation
 const validatePassword = (password) => {
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\W).{8,}$/;
+    const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*\W).{8,}$/;
     return passwordRegex.test(password);
 };
 
@@ -27,39 +27,33 @@ exports.register = async (req, res) => {
     try {
         // Validate email
         if (!validateEmail(email)) {
-            return res.status(400).json({ msg: 'Invalid email format or length' });
+            return res.status(400).json({ msg: 'email_invalid' });
         }
 
         // Validate username
         if (!validateUsername(username)) {
-            return res
-                .status(400)
-                .json({
-                    msg: 'Username must be between 3 and 16 characters, lowercase letters and numbers only',
-                });
+            return res.status(400).json({
+                msg: 'username_invalid',
+            });
         }
 
         // Validate password
         if (!validatePassword(password)) {
-            return res
-                .status(400)
-                .json({
-                    msg: 'Password must be at least 8 characters long, with at least one lowercase, one uppercase, and one special character',
-                });
+            return res.status(400).json({
+                msg: 'password_invalid',
+            });
         }
 
         // Check if the email is already in use
         let existingUser = await User.findByEmail(email);
         if (existingUser) {
-            return res.status(400).json({ msg: 'This email is already in use. Please log in.' });
+            return res.status(400).json({ msg: 'email_taken' });
         }
 
         // Check if the username is already taken
         existingUser = await User.findByUsername(username);
         if (existingUser) {
-            return res
-                .status(400)
-                .json({ msg: 'This username is already taken. Please choose another.' });
+            return res.status(400).json({ msg: 'username_taken' });
         }
 
         // Hash the password
@@ -72,7 +66,7 @@ exports.register = async (req, res) => {
 
         // Return only non-sensitive data (omit passwordHash, etc.)
         res.status(201).json({
-            msg: 'Registration successful',
+            msg: 'success',
             token,
             user: {
                 id: user.id,
@@ -82,7 +76,7 @@ exports.register = async (req, res) => {
             },
         });
     } catch (error) {
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ error: 'internal_server_error' });
     }
 };
 
@@ -92,11 +86,11 @@ exports.login = async (req, res) => {
     try {
         // Find user by email
         const user = await User.findByEmail(email);
-        if (!user) return res.status(400).json({ msg: 'Invalid credentials' });
+        if (!user) return res.status(400).json({ msg: 'credentials_wrong' });
 
         // Validate password
         const isMatch = await bcrypt.compare(password, user.password_hash);
-        if (!isMatch) return res.status(400).json({ msg: 'Invalid credentials' });
+        if (!isMatch) return res.status(400).json({ msg: 'credentials_wrong' });
 
         const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
@@ -110,6 +104,6 @@ exports.login = async (req, res) => {
             },
         });
     } catch (error) {
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ error: 'internal_server_error' });
     }
 };
