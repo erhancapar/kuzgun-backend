@@ -62,20 +62,23 @@ exports.register = async (req, res) => {
 
         // Create new user and return only relevant non-sensitive data
         const user = await User.create(email, username.toLowerCase(), passwordHash);
-        const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+        // Generate JWT token using the correct field name
+        const token = jwt.sign({ id: user.user_id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
         // Return only non-sensitive data (omit passwordHash, etc.)
         res.status(201).json({
             msg: 'success',
             token,
             user: {
-                id: user.id,
+                id: user.user_id,
                 email: user.email,
                 username: user.username,
                 created_at: user.created_at,
             },
         });
     } catch (error) {
+        console.error('Registration Error:', error);
         res.status(500).json({ error: 'internal_server_error' });
     }
 };
@@ -84,26 +87,37 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        // Find user by email
-        const user = await User.findByEmail(email);
-        if (!user) return res.status(400).json({ msg: 'credentials_wrong' });
+        // Find user by email including password_hash
+        const userWithPassword = await User.findByEmailWithPassword(email);
+        if (!userWithPassword) {
+            return res.status(400).json({ msg: 'credentials_wrong' });
+        }
 
         // Validate password
-        const isMatch = await bcrypt.compare(password, user.password_hash);
-        if (!isMatch) return res.status(400).json({ msg: 'credentials_wrong' });
+        const isMatch = await bcrypt.compare(password, userWithPassword.password_hash);
+        if (!isMatch) {
+            return res.status(400).json({ msg: 'credentials_wrong' });
+        }
 
-        const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        // Generate JWT token
+        const token = jwt.sign({ id: userWithPassword.user_id }, process.env.JWT_SECRET, {
+            expiresIn: '1h',
+        });
+
+        // Prepare user data without sensitive information
+        const user = {
+            id: userWithPassword.user_id,
+            email: userWithPassword.email,
+            username: userWithPassword.username,
+            created_at: userWithPassword.created_at,
+        };
 
         res.json({
             token,
-            user: {
-                id: user.id,
-                email: user.email,
-                username: user.username,
-                created_at: user.created_at,
-            },
+            user,
         });
     } catch (error) {
+        console.error('Login Error:', error);
         res.status(500).json({ error: 'internal_server_error' });
     }
 };
