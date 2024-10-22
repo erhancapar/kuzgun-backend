@@ -32,16 +32,12 @@ exports.register = async (req, res) => {
 
         // Validate username
         if (!validateUsername(username)) {
-            return res.status(400).json({
-                msg: 'username_invalid',
-            });
+            return res.status(400).json({ msg: 'username_invalid' });
         }
 
         // Validate password
         if (!validatePassword(password)) {
-            return res.status(400).json({
-                msg: 'password_invalid',
-            });
+            return res.status(400).json({ msg: 'password_invalid' });
         }
 
         // Check if the email is already in use
@@ -60,13 +56,13 @@ exports.register = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
-        // Create new user and return only relevant non-sensitive data
+        // Create new user
         const user = await User.create(email, username.toLowerCase(), passwordHash);
 
-        // Generate JWT token using the correct field name
+        // Generate JWT token
         const token = jwt.sign({ id: user.user_id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-        // Return only non-sensitive data (omit passwordHash, etc.)
+        // Return response with token and user data
         res.status(201).json({
             msg: 'success',
             token,

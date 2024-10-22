@@ -11,15 +11,13 @@ const User = {
         `;
         const values = [email, username, passwordHash];
         const result = await pool.query(query, values);
-        return result.rows[0]; // Return only non-sensitive data
+        return result.rows[0]; // Return non-sensitive data
     },
 
     // Find a user by email without password hash
     findByEmail: async (email) => {
         const query = `
-            SELECT user_id, email, username, display_name, is_email_verified, online_status, 
-                   status_emoji, status_text, description, avatar_url, banner_url, banner_color, 
-                   is_2fa_enabled, accept_messages_from, created_at
+            SELECT user_id, email, username, created_at
             FROM users
             WHERE email = $1;
         `;
@@ -30,9 +28,7 @@ const User = {
     // Find a user by username without password hash
     findByUsername: async (username) => {
         const query = `
-            SELECT user_id, email, username, display_name, is_email_verified, online_status, 
-                   status_emoji, status_text, description, avatar_url, banner_url, banner_color, 
-                   is_2fa_enabled, accept_messages_from, created_at
+            SELECT user_id, email, username, created_at
             FROM users
             WHERE username = $1;
         `;
@@ -40,7 +36,7 @@ const User = {
         return result.rows[0];
     },
 
-    // Add this method to include password_hash when finding by email
+    // Find a user by email including password_hash
     findByEmailWithPassword: async (email) => {
         const query = `
             SELECT user_id, email, username, password_hash, created_at
