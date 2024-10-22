@@ -3,19 +3,19 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
-// Helper function for email validation
+// Check if email meets the requirements
 const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email) && email.length <= 64;
 };
 
-// Helper function for username validation
+// Check if username meets the requirements
 const validateUsername = (username) => {
     const usernameRegex = /^[a-z0-9]+$/; // Only lowercase letters and numbers
     return usernameRegex.test(username) && username.length >= 3 && username.length <= 16;
 };
 
-// Helper function for password validation
+// Check if password meets the requirements
 const validatePassword = (password) => {
     const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*\W).{8,}$/;
     return passwordRegex.test(password);
@@ -25,17 +25,13 @@ exports.register = async (req, res) => {
     const { email, username, password } = req.body;
 
     try {
-        // Validate email
         if (!validateEmail(email)) {
             return res.status(400).json({ msg: 'email_invalid' });
         }
-
-        // Validate username
         if (!validateUsername(username)) {
             return res.status(400).json({ msg: 'username_invalid' });
         }
 
-        // Validate password
         if (!validatePassword(password)) {
             return res.status(400).json({ msg: 'password_invalid' });
         }
@@ -53,14 +49,14 @@ exports.register = async (req, res) => {
         }
 
         // Hash the password
-        const salt = await bcrypt.genSalt(10);
+        const salt = await bcrypt.genSalt(100);
         const passwordHash = await bcrypt.hash(password, salt);
 
         // Create new user
         const user = await User.create(email, username.toLowerCase(), passwordHash);
 
         // Generate JWT token
-        const token = jwt.sign({ id: user.user_id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign({ id: user.user_id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
         // Return response with token and user data
         res.status(201).json({
@@ -97,7 +93,7 @@ exports.login = async (req, res) => {
 
         // Generate JWT token
         const token = jwt.sign({ id: userWithPassword.user_id }, process.env.JWT_SECRET, {
-            expiresIn: '1h',
+            expiresIn: '30d',
         });
 
         // Prepare user data without sensitive information
