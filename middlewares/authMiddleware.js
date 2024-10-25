@@ -1,27 +1,26 @@
+// middlewares/authMiddleware.js
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const authMiddleware = (req, res, next) => {
-    const authHeader = req.header('Authorization');
+    const authHeader = req.headers.authorization;
+
     if (!authHeader) {
-        return res.status(401).json({ msg: 'No token, authorization denied' });
+        return res.status(401).json({ msg: 'no_token_provided' });
     }
 
-    // The token should be in the format 'Bearer <token>'
-    const tokenParts = authHeader.split(' ');
-    if (tokenParts.length !== 2 || tokenParts[0] !== 'Bearer') {
-        return res.status(401).json({ msg: 'Token is not valid' });
-    }
+    const token = authHeader.split(' ')[1]; // Assumes 'Bearer <token>'
 
-    const token = tokenParts[1];
+    if (!token) {
+        return res.status(401).json({ msg: 'token_malformed' });
+    }
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = { id: decoded.id }; // Attach user info as an object
+        req.user = { id: decoded.id };
         next();
     } catch (error) {
-        console.error('JWT Verification Error:', error);
-        res.status(401).json({ msg: 'Token is not valid' });
+        return res.status(401).json({ msg: 'token_invalid' });
     }
 };
 
