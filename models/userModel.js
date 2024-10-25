@@ -14,6 +14,16 @@ const User = {
         return result.rows[0]; // Return non-sensitive data
     },
 
+    findById: async (id) => {
+        const query = `
+            SELECT user_id, email, username, created_at
+            FROM users
+            WHERE user_id = $1;
+        `;
+        const result = await pool.query(query, [id]);
+        return result.rows[0];
+    },
+
     // Find a user by email without password
     findByEmail: async (email) => {
         const query = `

@@ -144,6 +144,12 @@ exports.edit = async (req, res) => {
         // Build an object of fields to update
         let updates = {};
 
+        // Check if such user exists
+        if (!(await User.findById(req.user.id))) {
+            console.log(await User.findById(req.user.id));
+            return res.status(400).json({ msg: 'no_such_user' });
+        }
+
         if (email) {
             if (!validateEmail(email)) {
                 return res.status(400).json({ msg: 'email_invalid' });
@@ -262,6 +268,12 @@ exports.remove = async (req, res) => {
     const userId = req.user.id;
 
     try {
+        // Check if such user exists
+        if (!(await User.findById(req.user.id))) {
+            console.log(await User.findById(req.user.id));
+            return res.status(400).json({ msg: 'no_such_user' });
+        }
+
         // Delete the user
         await User.deleteById(userId);
 
