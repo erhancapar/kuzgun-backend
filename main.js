@@ -1,7 +1,7 @@
 // main.js
 const express = require('express');
 const userRoutes = require('./routes/userRoutes');
-const guildRoutes = require('./routes/guildRoutes');
+const serverRoutes = require('./routes/serverRoutes');
 const channelRoutes = require('./routes/channelRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 require('dotenv').config();
@@ -13,7 +13,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/users', userRoutes);
-app.use('/api/guilds', guildRoutes);
+app.use('/api/servers', serverRoutes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/messages', messageRoutes);
 
