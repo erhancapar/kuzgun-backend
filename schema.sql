@@ -22,6 +22,7 @@ CREATE TABLE users (
 );
 
 -- 2. Create the servers table (depends on users)
+-- Omitting foreign key constraints on afk_channel_id and system_channel_id for now
 CREATE TABLE servers (
     server_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     owner_id UUID NOT NULL REFERENCES users(user_id) ON DELETE SET NULL,
@@ -30,27 +31,18 @@ CREATE TABLE servers (
     icon_url TEXT,
     banner_url TEXT,
     splash_url TEXT,
-    afk_timeout INTEGER DEFAULT 300,
+    afk_timeout INTEGER NOT NULL DEFAULT 300,
     afk_channel_id UUID,
     system_channel_id UUID,
-    is_system_welcome_notification_enabled BOOLEAN DEFAULT TRUE,
-    is_system_boost_notification_enabled BOOLEAN DEFAULT TRUE,
-    boost_level SMALLINT DEFAULT 0 CHECK (boost_level BETWEEN 0 AND 3),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    is_system_welcome_notification_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    is_system_boost_notification_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    boost_level SMALLINT NOT NULL DEFAULT 0 CHECK (boost_level BETWEEN 0 AND 3),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. Create the emojis table (depends on servers)
-CREATE TABLE emojis (
-    emoji_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    server_id UUID REFERENCES servers(server_id) ON DELETE CASCADE,
-    name VARCHAR(32) NOT NULL,
-    image_url TEXT NOT NULL,
-    is_animated BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- 4. Create the channels table (depends on servers)
--- We'll omit the last_message_id foreign key for now due to circular dependency
+-- 3. Create the channels table (depends on servers)
+-- Omitting the foreign key constraint on last_message_id for now
 CREATE TABLE channels (
     channel_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     server_id UUID REFERENCES servers(server_id) ON DELETE CASCADE,
@@ -74,7 +66,7 @@ CREATE TABLE channels (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 5. Create the messages table (depends on channels and users)
+-- 4. Create the messages table (depends on channels and users)
 CREATE TABLE messages (
     message_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     channel_id UUID REFERENCES channels(channel_id) ON DELETE CASCADE,
@@ -87,13 +79,34 @@ CREATE TABLE messages (
     is_pinned BOOLEAN NOT NULL DEFAULT FALSE
 );
 
--- Now that messages table is created, we can add the foreign key constraint to channels.last_message_id
+-- 5. Now that messages table is created, add the foreign key constraint to channels.last_message_id
 ALTER TABLE channels
 ADD CONSTRAINT fk_channels_last_message
 FOREIGN KEY (last_message_id)
 REFERENCES messages(message_id);
 
--- 6. Create the attachments table (depends on messages)
+-- 6. Now that channels table is created, add foreign key constraints to servers.afk_channel_id and servers.system_channel_id
+ALTER TABLE servers
+ADD CONSTRAINT fk_servers_afk_channel
+FOREIGN KEY (afk_channel_id)
+REFERENCES channels(channel_id) ON DELETE SET NULL;
+
+ALTER TABLE servers
+ADD CONSTRAINT fk_servers_system_channel
+FOREIGN KEY (system_channel_id)
+REFERENCES channels(channel_id) ON DELETE SET NULL;
+
+-- 7. Create the emojis table (depends on servers)
+CREATE TABLE emojis (
+    emoji_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    server_id UUID REFERENCES servers(server_id) ON DELETE CASCADE,
+    name VARCHAR(32) NOT NULL,
+    image_url TEXT NOT NULL,
+    is_animated BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 8. Create the attachments table (depends on messages)
 CREATE TABLE attachments (
     attachment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     message_id UUID REFERENCES messages(message_id) ON DELETE CASCADE,
@@ -102,7 +115,7 @@ CREATE TABLE attachments (
     uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 7. Create the reactions table (depends on messages, users, and emojis)
+-- 9. Create the reactions table (depends on messages, users, and emojis)
 CREATE TABLE reactions (
     message_id UUID REFERENCES messages(message_id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
@@ -110,7 +123,7 @@ CREATE TABLE reactions (
     PRIMARY KEY (message_id, user_id, emoji_id)
 );
 
--- 8. Create the relationships table (depends on users)
+-- 10. Create the relationships table (depends on users)
 CREATE TABLE relationships (
     relationship_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id_1 UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
@@ -122,7 +135,7 @@ CREATE TABLE relationships (
     UNIQUE (user_id_1, user_id_2)
 );
 
--- 9. Create the server_members table (depends on servers and users)
+-- 11. Create the server_members table (depends on servers and users)
 CREATE TABLE server_members (
     server_id UUID NOT NULL REFERENCES servers(server_id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
@@ -133,7 +146,7 @@ CREATE TABLE server_members (
     PRIMARY KEY (server_id, user_id)
 );
 
--- 10. Create the roles table (depends on servers)
+-- 12. Create the roles table (depends on servers)
 CREATE TABLE roles (
     role_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     server_id UUID NOT NULL REFERENCES servers(server_id) ON DELETE CASCADE,
@@ -144,7 +157,7 @@ CREATE TABLE roles (
     is_mentionable BOOLEAN DEFAULT FALSE
 );
 
--- 11. Create the server_bans table (depends on servers and users)
+-- 13. Create the server_bans table (depends on servers and users)
 CREATE TABLE server_bans (
     server_id UUID NOT NULL REFERENCES servers(server_id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
@@ -154,7 +167,7 @@ CREATE TABLE server_bans (
     PRIMARY KEY (server_id, user_id)
 );
 
--- 12. Create the server_invites table (depends on servers and users)
+-- 14. Create the server_invites table (depends on servers and users)
 CREATE TABLE server_invites (
     code VARCHAR(10) PRIMARY KEY,
     server_id UUID NOT NULL REFERENCES servers(server_id) ON DELETE CASCADE,
@@ -165,7 +178,7 @@ CREATE TABLE server_invites (
     uses INTEGER DEFAULT 0
 );
 
--- 13. Create the dm_channels table (depends on users)
+-- 15. Create the dm_channels table (depends on users)
 CREATE TABLE dm_channels (
     dm_channel_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id_1 UUID REFERENCES users(user_id) ON DELETE CASCADE,
@@ -173,7 +186,7 @@ CREATE TABLE dm_channels (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 14. Create the dm_messages table (depends on dm_channels and users)
+-- 16. Create the dm_messages table (depends on dm_channels and users)
 CREATE TABLE dm_messages (
     message_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     dm_channel_id UUID REFERENCES dm_channels(dm_channel_id) ON DELETE CASCADE,
@@ -183,7 +196,7 @@ CREATE TABLE dm_messages (
     updated_at TIMESTAMP WITH TIME ZONE
 );
 
--- 15. Create the voice_states table (depends on servers, channels, and users)
+-- 17. Create the voice_states table (depends on servers, channels, and users)
 CREATE TABLE voice_states (
     server_id UUID REFERENCES servers(server_id) ON DELETE CASCADE,
     channel_id UUID REFERENCES channels(channel_id) ON DELETE CASCADE,
@@ -197,7 +210,7 @@ CREATE TABLE voice_states (
     PRIMARY KEY (server_id, user_id)
 );
 
--- 16. Create the audit_logs table (depends on servers and users)
+-- 18. Create the audit_logs table (depends on servers and users)
 CREATE TABLE audit_logs (
     log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     server_id UUID REFERENCES servers(server_id) ON DELETE CASCADE,
